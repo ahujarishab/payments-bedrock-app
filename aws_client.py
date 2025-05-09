@@ -1,48 +1,102 @@
-import boto3
 import os
+import boto3
 from botocore.exceptions import ClientError
-from load_dotenv import get_aws_credentials
-
-def get_bedrock_agent_runtime_client(region=None):
-    """
-    Get a configured Bedrock Agent Runtime client
-    """
-    aws_creds = get_aws_credentials()
-    region_name = region if region else aws_creds.get('aws_region', 'us-east-1')
-    
-    return boto3.client(
-        'bedrock-agent-runtime',
-        region_name=region_name
-    )
-
-def get_bedrock_client(region=None):
-    """
-    Get a configured Bedrock client
-    """
-    aws_creds = get_aws_credentials()
-    region_name = region if region else aws_creds.get('aws_region', 'us-east-1')
-    
-    return boto3.client(
-        'bedrock',
-        region_name=region_name
-    )
-
-def check_aws_credentials():
-    """
-    Check if AWS credentials are properly configured
-    """
-    return bool(os.environ.get('AWS_ACCESS_KEY_ID') or boto3.Session().get_credentials())
 
 def setup_aws_environment():
     """
-    Set up AWS environment variables from credentials
+    Set up AWS environment variables and return AWS credentials
     """
-    aws_creds = get_aws_credentials()
+    # Get AWS credentials from environment variables
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    aws_session_token = os.environ.get('AWS_SESSION_TOKEN')
+    aws_region = os.environ.get('AWS_REGION', 'us-east-1')
     
-    os.environ['AWS_ACCESS_KEY_ID'] = aws_creds['aws_access_key_id']
-    os.environ['AWS_SECRET_ACCESS_KEY'] = aws_creds['aws_secret_access_key']
-    if aws_creds['aws_session_token']:
-        os.environ['AWS_SESSION_TOKEN'] = aws_creds['aws_session_token']
-    os.environ['AWS_DEFAULT_REGION'] = aws_creds['aws_region']
+    # Return AWS credentials
+    return {
+        'aws_access_key_id': aws_access_key_id,
+        'aws_secret_access_key': aws_secret_access_key,
+        'aws_session_token': aws_session_token,
+        'aws_region': aws_region
+    }
+
+def check_aws_credentials():
+    """
+    Check if AWS credentials are configured
+    """
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
     
-    return aws_creds
+    return aws_access_key_id is not None and aws_secret_access_key is not None
+
+def get_bedrock_client(region=None):
+    """
+    Get a boto3 client for Amazon Bedrock
+    """
+    if region is None:
+        region = os.environ.get('AWS_REGION', 'us-east-1')
+    
+    try:
+        # Create a boto3 session
+        session = boto3.Session(
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            aws_session_token=os.environ.get('AWS_SESSION_TOKEN'),
+            region_name=region
+        )
+        
+        # Create a bedrock-agent-runtime client
+        bedrock_client = session.client(service_name='bedrock-agent-runtime')
+        
+        return bedrock_client
+    except Exception as e:
+        print(f"Error creating Bedrock client: {str(e)}")
+        raise e
+
+def get_bedrock_agent_client(region=None):
+    """
+    Get a boto3 client for Amazon Bedrock Agent
+    """
+    if region is None:
+        region = os.environ.get('AWS_REGION', 'us-east-1')
+    
+    try:
+        # Create a boto3 session
+        session = boto3.Session(
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            aws_session_token=os.environ.get('AWS_SESSION_TOKEN'),
+            region_name=region
+        )
+        
+        # Create a bedrock-agent client
+        bedrock_client = session.client(service_name='bedrock-agent')
+        
+        return bedrock_client
+    except Exception as e:
+        print(f"Error creating Bedrock Agent client: {str(e)}")
+        raise e
+
+def get_bedrock_agent_runtime_client(region=None):
+    """
+    Get a boto3 client for Amazon Bedrock Agent Runtime
+    """
+    if region is None:
+        region = os.environ.get('AWS_REGION', 'us-east-1')
+    
+    try:
+        # Create a boto3 session
+        session = boto3.Session(
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            aws_session_token=os.environ.get('AWS_SESSION_TOKEN'),
+            region_name=region
+        )
+        
+        # Create a bedrock-agent-runtime client
+        bedrock_client = session.client(service_name='bedrock-agent-runtime')
+        
+        return bedrock_client
+    except Exception as e:
+        print(f"Error creating Bedrock Agent Runtime client: {str(e)}")
+        raise e

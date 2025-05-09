@@ -44,6 +44,17 @@ st.markdown("""
         border: none !important;
         font-weight: bold;
     }
+    
+    .trace-container {
+        margin-top: 20px;
+        border-top: 1px solid #ddd;
+        padding-top: 10px;
+    }
+    
+    .trace-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,6 +76,8 @@ if 'task_completed' not in st.session_state:
     st.session_state.task_completed = False
 if 'execution_id' not in st.session_state:
     st.session_state.execution_id = None
+if 'agent_trace' not in st.session_state:
+    st.session_state.agent_trace = None
 
 # Agent options for display
 agent_options = get_agent_options()
@@ -169,6 +182,43 @@ def generate_step_logs(step_name, agent_type):
     
     return logs
 
+# Function to generate sample agent trace
+def generate_agent_trace(agent_type):
+    trace = {
+        "agentId": f"agent-{agent_type}-{random.randint(10000, 99999)}",
+        "agentAliasId": f"alias-{random.randint(10000, 99999)}",
+        "sessionId": f"session-{datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(1000, 9999)}",
+        "sessionAttributes": {},
+        "promptTemplate": "Process the following request and provide a response",
+        "steps": []
+    }
+    
+    # Generate steps based on agent type
+    steps = get_task_steps(agent_type)
+    
+    for i, step in enumerate(steps):
+        step_trace = {
+            "stepId": f"step-{i+1}",
+            "stepName": step,
+            "stepType": "ORCHESTRATION" if "processing" in step.lower() else "VALIDATION",
+            "startTime": (datetime.now() + timedelta(seconds=i*2)).isoformat(),
+            "endTime": (datetime.now() + timedelta(seconds=i*2+1)).isoformat(),
+            "status": "COMPLETED" if i < len(steps)-1 else "IN_PROGRESS",
+            "inputs": {
+                "request": f"Perform {step}"
+            },
+            "outputs": {
+                "response": f"Successfully completed {step}" if i < len(steps)-1 else "In progress..."
+            }
+        }
+        trace["steps"].append(step_trace)
+        
+        # Only add completed steps
+        if i >= len(steps) - 1:
+            break
+    
+    return trace
+
 # Function to simulate task execution
 def simulate_task_execution():
     if not st.session_state.task_started:
@@ -181,6 +231,20 @@ def simulate_task_execution():
         if current_step not in st.session_state.step_logs:
             st.session_state.step_logs[current_step] = generate_step_logs(current_step, st.session_state.current_task)
         
+        # Generate agent trace if not already generated
+        if st.session_state.agent_trace is None:
+            st.session_state.agent_trace = generate_agent_trace(st.session_state.current_task)
+        
+        # Update agent trace to match current step
+        if st.session_state.agent_trace:
+            for i, step in enumerate(st.session_state.agent_trace["steps"]):
+                if i == st.session_state.current_step_index:
+                    step["status"] = "IN_PROGRESS"
+                elif i < st.session_state.current_step_index:
+                    step["status"] = "COMPLETED"
+                else:
+                    step["status"] = "PENDING"
+        
         # Simulate step completion after a delay
         if random.random() > 0.7:  # 30% chance to advance to next step on each refresh
             st.session_state.current_step_index += 1
@@ -188,6 +252,13 @@ def simulate_task_execution():
             # Check if task is completed
             if st.session_state.current_step_index >= len(st.session_state.task_steps):
                 st.session_state.task_completed = True
+                
+                # Update all steps in trace to completed
+                if st.session_state.agent_trace:
+                    for step in st.session_state.agent_trace["steps"]:
+                        step["status"] = "COMPLETED"
+                        if "outputs" in step and "response" in step["outputs"]:
+                            step["outputs"]["response"] = step["outputs"]["response"].replace("In progress...", "Successfully completed")
 
 # Main content area with two columns
 col1, col2 = st.columns([1, 1])
@@ -214,6 +285,7 @@ with col1:
             st.session_state.task_started = True
             st.session_state.task_completed = False
             st.session_state.execution_id = f"exec-{agent_type}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            st.session_state.agent_trace = None
             st.rerun()
     
     with col_reset:
@@ -225,6 +297,7 @@ with col1:
             st.session_state.task_started = False
             st.session_state.task_completed = False
             st.session_state.execution_id = None
+            st.session_state.agent_trace = None
             st.rerun()
     
     # Display task information
@@ -275,6 +348,52 @@ with col2:
                         st.text(log)
             else:
                 st.write("Waiting for logs...")
+            
+            # Display agent trace information
+            if st.session_state.agent_trace:
+                st.markdown('<div class="trace-container">', unsafe_allow_html=True)
+                st.markdown('<div class="trace-title">Agent Trace:</div>', unsafe_allow_html=True)
+                
+                # Create tabs for different trace views
+                trace_tabs = st.tabs(["Current Step", "All Steps", "Raw JSON"])
+                
+                with trace_tabs[0]:
+                    # Show trace for current step only
+                    if current_index < len(st.session_state.agent_trace["steps"]):
+                        current_trace = st.session_state.agent_trace["steps"][current_index]
+                        st.write(f"**Step ID:** {current_trace['stepId']}")
+                        st.write(f"**Step Type:** {current_trace['stepType']}")
+                        st.write(f"**Status:** {current_trace['status']}")
+                        st.write(f"**Start Time:** {current_trace['startTime']}")
+                        st.write(f"**End Time:** {current_trace['endTime'] if current_trace['status'] == 'COMPLETED' else 'In progress...'}")
+                        
+                        # Show inputs and outputs
+                        with st.expander("Step Inputs"):
+                            st.json(current_trace["inputs"])
+                        with st.expander("Step Outputs"):
+                            st.json(current_trace["outputs"])
+                
+                with trace_tabs[1]:
+                    # Show all steps in a table
+                    trace_data = []
+                    for step in st.session_state.agent_trace["steps"]:
+                        trace_data.append({
+                            "Step ID": step["stepId"],
+                            "Step Name": step["stepName"],
+                            "Type": step["stepType"],
+                            "Status": step["status"],
+                            "Start Time": step["startTime"].split("T")[1].split(".")[0] if "T" in step["startTime"] else step["startTime"]
+                        })
+                    
+                    if trace_data:
+                        trace_df = pd.DataFrame(trace_data)
+                        st.dataframe(trace_df, use_container_width=True)
+                
+                with trace_tabs[2]:
+                    # Show raw JSON trace
+                    st.json(st.session_state.agent_trace)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
                 
             # Auto-refresh for in-progress tasks
             if not st.session_state.task_completed:

@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from botocore.exceptions import ClientError
 from load_dotenv import load_env_file
-from aws_client import setup_aws_environment, get_bedrock_client
+from aws_client import setup_aws_environment, get_bedrock_agent_client
 from agent_utils import get_agent_options, get_agent_credentials_for_type, invoke_agent
 from ui_components import display_configuration_info
 from session_state import initialize_session_state
@@ -59,8 +59,8 @@ def get_agent_details(agent_id, region=None):
     Get details about a Bedrock agent
     """
     try:
-        # Initialize Bedrock client
-        bedrock_client = get_bedrock_client(region)
+        # Initialize Bedrock agent client
+        bedrock_client = get_bedrock_agent_client(region)
         
         # Get agent details
         response = bedrock_client.get_agent(
@@ -69,8 +69,10 @@ def get_agent_details(agent_id, region=None):
         
         return response
     except ClientError as e:
+        st.error(f"Error getting agent details: {str(e)}")
         return {'error': f"Error getting agent details: {str(e)}"}
     except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
         return {'error': f"Unexpected error: {str(e)}"}
 
 # Function to get agent alias details
@@ -79,8 +81,8 @@ def get_agent_alias(agent_id, agent_alias_id, region=None):
     Get details about a Bedrock agent alias
     """
     try:
-        # Initialize Bedrock client
-        bedrock_client = get_bedrock_client(region)
+        # Initialize Bedrock agent client
+        bedrock_client = get_bedrock_agent_client(region)
         
         # Get agent alias details
         response = bedrock_client.get_agent_alias(
@@ -90,8 +92,10 @@ def get_agent_alias(agent_id, agent_alias_id, region=None):
         
         return response
     except ClientError as e:
+        st.error(f"Error getting agent alias details: {str(e)}")
         return {'error': f"Error getting agent alias details: {str(e)}"}
     except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
         return {'error': f"Unexpected error: {str(e)}"}
 
 # Function to get agent status
@@ -117,15 +121,21 @@ def get_agent_status(agent_id, agent_alias_id, region=None):
         if agent_details.get('agentStatus') != 'READY':
             status = 'Not Ready'
         
+        # Format the last updated time
+        last_updated = alias_details.get('lastUpdatedAt', 'Unknown')
+        if isinstance(last_updated, datetime):
+            last_updated = last_updated.strftime("%Y-%m-%d %H:%M:%S")
+        
         return {
             'status': status,
             'agentName': agent_details.get('agentName', 'Unknown'),
             'aliasName': alias_details.get('agentAliasName', 'Unknown'),
-            'lastModified': alias_details.get('lastUpdatedAt', 'Unknown'),
+            'lastModified': last_updated,
             'model': agent_details.get('foundationModel', 'Unknown'),
             'description': agent_details.get('description', 'No description available')
         }
     except Exception as e:
+        st.error(f"Error getting agent status: {str(e)}")
         return {'status': 'Error', 'message': str(e)}
 
 # Function to simulate agent workload
@@ -201,8 +211,10 @@ for i, agent_type in enumerate(agent_options):
         if not agent_id or not agent_alias_id:
             st.info(f"{agent_name} agent not configured. Please set the agent ID and alias ID in your .env file.")
         else:
-            # Get agent status
-            status = get_agent_status(agent_id, agent_alias_id, aws_creds['aws_region'])
+            # Show loading spinner while fetching agent status
+            with st.spinner(f"Fetching {agent_name} status..."):
+                # Get agent status
+                status = get_agent_status(agent_id, agent_alias_id, aws_creds['aws_region'])
             
             # Create two columns for status and workload
             col1, col2 = st.columns([1, 2])
