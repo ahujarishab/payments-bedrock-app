@@ -482,26 +482,20 @@ for item, status in config_status.items():
 left_col, right_col = st.columns([3, 2])
 
 with left_col:
-    # Payment Request Card
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-header">Payment Request</div>', unsafe_allow_html=True)
+    # Payment Request section - without card wrapper
+    st.subheader("Payment Request")
     
     # JSON editor with file upload option
     json_data = display_json_editor(get_default_json_template())
     
     # Process payment button with improved styling
-    st.markdown('<div class="process-button">', unsafe_allow_html=True)
     if st.button("Process Payment", type="primary", disabled=not all([aws_configured, payment_orchestrator_configured, payment_validator_configured, sanction_check_configured, json_data is not None])):
         with st.spinner("Processing payment..."):
             result = process_payment_with_agents(json_data)
-    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Recent payment history in a card
+    # Recent payment history section - without card wrapper
     if st.session_state.payment_history:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-header">Recent Processing History</div>', unsafe_allow_html=True)
+        st.subheader("Recent Processing History")
         
         agent_options = get_agent_options()
         for i, history_item in enumerate(reversed(st.session_state.payment_history[:3])):
@@ -513,13 +507,10 @@ with left_col:
                 st.json(history_item['payload'])
                 st.write("**Response:**")
                 st.write(history_item['response'])
-        
-        st.markdown('</div>', unsafe_allow_html=True)
 
 with right_col:
-    # Agent Status Card
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-header">Agent Status</div>', unsafe_allow_html=True)
+    # Agent Status section - without card wrapper
+    st.subheader("Agent Status")
     
     if 'agent_statuses' in st.session_state:
         # Payment Orchestrator
@@ -546,12 +537,9 @@ with right_col:
         st.markdown(f'<span class="status-indicator {status}"></span> <b>Sanction Check:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Work Log Card
+    # Work Log section - without card wrapper
     if st.session_state.step_logs:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-header">Work Log</div>', unsafe_allow_html=True)
+        st.subheader("Work Log")
         
         st.markdown('<div class="worklog">', unsafe_allow_html=True)
         
@@ -580,7 +568,6 @@ with right_col:
                 </div>
                 """, unsafe_allow_html=True)
         
-        st.markdown('</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 # Add information about configuration
