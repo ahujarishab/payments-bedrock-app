@@ -14,171 +14,6 @@ from ui_components import (
 )
 from session_state import initialize_session_state, get_default_json_template
 
-# Load environment variables from .env file if it exists
-load_env_file()
-
-# Set up AWS environment
-aws_creds = setup_aws_environment()
-
-# Set page configuration
-st.set_page_config(
-    page_title="Payment Orchestrator",
-    page_icon="💳",
-    layout="wide"
-)
-
-# Add custom CSS for styling
-st.markdown("""
-<style>
-    section[data-testid="stSidebar"] {
-        display: none;
-    }
-    
-    /* Hide the navigation arrow */
-    .e10vaf9m1, .st-emotion-cache-1f3w014, .ex0cdmw0, svg[class*="st-emotion-cache"] {
-        display: none !important;
-    }
-    
-    .back-button {
-        margin-bottom: 20px;
-    }
-    
-    .back-button button {
-        background-color: #f0f0f0 !important;
-        color: #333 !important;
-        border: none !important;
-        font-weight: bold;
-    }
-    
-    .agent-status {
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-    }
-    
-    .agent-status.success {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-    }
-    
-    .agent-status.error {
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-    }
-    
-    .agent-status.running {
-        background-color: #fff3cd;
-        border: 1px solid #ffeeba;
-    }
-    
-    .agent-status.pending {
-        background-color: #e2e3e5;
-        border: 1px solid #d6d8db;
-    }
-    
-    .execution-step {
-        padding: 8px 12px;
-        margin: 4px 0;
-        border-radius: 4px;
-        font-size: 0.9em;
-    }
-    
-    .execution-step.completed {
-        background-color: #d4edda;
-        border-left: 4px solid #28a745;
-    }
-    
-    .execution-step.active {
-        background-color: #fff3cd;
-        border-left: 4px solid #ffc107;
-    }
-    
-    .execution-step.pending {
-        background-color: #f8f9fa;
-        border-left: 4px solid #6c757d;
-        color: #6c757d;
-    }
-    
-    .worklog {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 5px;
-        padding: 10px;
-        margin-top: 20px;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    
-    .worklog-entry {
-        margin-bottom: 10px;
-        padding-bottom: 5px;
-        border-bottom: 1px solid #e9ecef;
-    }
-    
-    .worklog-entry .timestamp {
-        color: #6c757d;
-        font-size: 0.8em;
-        margin-bottom: 2px;
-    }
-    
-    .worklog-entry .message {
-        margin: 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state variables
-initialize_session_state()
-
-# Initialize step logs if not exists
-if 'step_logs' not in st.session_state:
-    st.session_state.step_logs = {}
-
-# Initialize processing flag
-if 'is_processing' not in st.session_state:
-    st.session_state.is_processing = False
-    
-# Initialize agent statuses if not exists
-if 'agent_statuses' not in st.session_state:
-    st.session_state.agent_statuses = {
-        'payment_orchestrator': {'status': 'pending', 'response': None, 'error': None, 'active': False},
-        'payment_validator': {'status': 'pending', 'response': None, 'error': None, 'active': False},
-        'sanction_check': {'status': 'pending', 'response': None, 'error': None, 'active': False}
-    }
-    
-# Define default orchestrator steps
-DEFAULT_STEPS = [
-    "Receiving payment request",
-    "Validating request format",
-    "Delegating card validation to Payment Validator",
-    "Delegating customer check to Sanction Check",
-    "Analyzing validation results",
-    "Analyzing sanction check results",
-    "Making payment decision",
-    "Processing payment with gateway",
-    "Generating response"
-]
-
-# Initialize orchestrator steps if not exists
-if 'orchestrator_steps' not in st.session_state:
-    st.session_state.orchestrator_steps = {
-        'current_step': 0,
-        'steps': DEFAULT_STEPS
-    }
-
-# Add a back button above the title
-st.markdown('<div class="back-button">', unsafe_allow_html=True)
-if st.button("← Back to Dashboard"):
-    st.switch_page("Home.py")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# App title and description
-st.title("💳 Payment Processing")
-st.markdown("""
-Upload a payment JSON payload and process it using AWS Bedrock agents.
-The payment orchestrator will coordinate with validator and sanction check agents.
-""")
-
 # Function to add log entry to a specific step
 def add_step_log(step_index, message):
     if step_index not in st.session_state.step_logs:
@@ -433,6 +268,192 @@ def process_payment_with_agents(json_data):
         'sanction_check': st.session_state.agent_statuses['sanction_check']
     }
 
+# Load environment variables from .env file if it exists
+load_env_file()
+
+# Set up AWS environment
+aws_creds = setup_aws_environment()
+
+# Set page configuration
+st.set_page_config(
+    page_title="Payment Processing",
+    page_icon="💳",
+    layout="wide"
+)
+
+# Add custom CSS for styling
+st.markdown("""
+<style>
+    section[data-testid="stSidebar"] {
+        display: none;
+    }
+    
+    /* Hide the navigation arrow */
+    .e10vaf9m1, .st-emotion-cache-1f3w014, .ex0cdmw0, svg[class*="st-emotion-cache"] {
+        display: none !important;
+    }
+    
+    .back-button {
+        margin-bottom: 20px;
+    }
+    
+    .back-button button {
+        background-color: #f0f0f0 !important;
+        color: #333 !important;
+        border: none !important;
+        font-weight: bold;
+    }
+    
+    .agent-status {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    
+    .agent-status.success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .agent-status.error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .agent-status.running {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+    }
+    
+    .agent-status.pending {
+        background-color: #e2e3e5;
+        border: 1px solid #d6d8db;
+    }
+    
+    .worklog {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        padding: 10px;
+        margin-top: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .worklog-entry {
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .worklog-entry .timestamp {
+        color: #6c757d;
+        font-size: 0.8em;
+        margin-bottom: 2px;
+        font-weight: bold;
+    }
+    
+    .worklog-entry .message {
+        margin: 0;
+    }
+    
+    .card {
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #e9ecef;
+        margin-bottom: 15px;
+        background-color: white;
+    }
+    
+    .card-header {
+        font-weight: bold;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 5px;
+    }
+    
+    .process-button {
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    
+    .status-indicator.success {
+        background-color: #28a745;
+    }
+    
+    .status-indicator.error {
+        background-color: #dc3545;
+    }
+    
+    .status-indicator.running {
+        background-color: #ffc107;
+    }
+    
+    .status-indicator.pending {
+        background-color: #6c757d;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Initialize session state variables
+initialize_session_state()
+
+# Initialize step logs if not exists
+if 'step_logs' not in st.session_state:
+    st.session_state.step_logs = {}
+
+# Initialize processing flag
+if 'is_processing' not in st.session_state:
+    st.session_state.is_processing = False
+    
+# Initialize agent statuses if not exists
+if 'agent_statuses' not in st.session_state:
+    st.session_state.agent_statuses = {
+        'payment_orchestrator': {'status': 'pending', 'response': None, 'error': None, 'active': False},
+        'payment_validator': {'status': 'pending', 'response': None, 'error': None, 'active': False},
+        'sanction_check': {'status': 'pending', 'response': None, 'error': None, 'active': False}
+    }
+    
+# Define default orchestrator steps
+DEFAULT_STEPS = [
+    "Receiving payment request",
+    "Validating request format",
+    "Delegating card validation to Payment Validator",
+    "Delegating customer check to Sanction Check",
+    "Analyzing validation results",
+    "Analyzing sanction check results",
+    "Making payment decision",
+    "Processing payment with gateway",
+    "Generating response"
+]
+
+# Initialize orchestrator steps if not exists
+if 'orchestrator_steps' not in st.session_state:
+    st.session_state.orchestrator_steps = {
+        'current_step': 0,
+        'steps': DEFAULT_STEPS
+    }
+
+# Add a back button above the title
+st.markdown('<div class="back-button">', unsafe_allow_html=True)
+if st.button("← Back to Dashboard"):
+    st.switch_page("Home.py")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# App title and description
+st.title("💳 Payment Processing")
+st.markdown("""
+This page allows you to process payments using AWS Bedrock agents. The payment orchestrator coordinates with the validator and sanction check agents to ensure secure and compliant payment processing.
+""")
+
 # Check AWS credentials
 aws_configured = check_aws_credentials()
 
@@ -441,107 +462,97 @@ payment_orchestrator_configured = check_agent_configuration('payment_orchestrato
 payment_validator_configured = check_agent_configuration('payment_validator')
 sanction_check_configured = check_agent_configuration('sanction_check')
 
-# Display configuration status
+# Display configuration status in a more compact way
 st.sidebar.subheader("Configuration Status")
 
-if aws_configured:
-    st.sidebar.success("✅ AWS Credentials: Configured")
-else:
-    st.sidebar.error("❌ AWS Credentials: Not configured")
+config_status = {
+    "AWS Credentials": aws_configured,
+    "Payment Orchestrator": payment_orchestrator_configured,
+    "Payment Validator": payment_validator_configured,
+    "Sanction Check": sanction_check_configured
+}
 
-if payment_orchestrator_configured:
-    st.sidebar.success("✅ Payment Orchestrator: Configured")
-else:
-    st.sidebar.error("❌ Payment Orchestrator: Not configured")
+for item, status in config_status.items():
+    if status:
+        st.sidebar.success(f"✅ {item}: Configured")
+    else:
+        st.sidebar.error(f"❌ {item}: Not configured")
 
-if payment_validator_configured:
-    st.sidebar.success("✅ Payment Validator: Configured")
-else:
-    st.sidebar.error("❌ Payment Validator: Not configured")
+# Create a layout with two main columns
+left_col, right_col = st.columns([3, 2])
 
-if sanction_check_configured:
-    st.sidebar.success("✅ Sanction Check: Configured")
-else:
-    st.sidebar.error("❌ Sanction Check: Not configured")
-
-# JSON editor with file upload option
-json_data = display_json_editor(get_default_json_template())
-
-# Process payment button
-if st.button("Process Payment", type="primary", disabled=not all([aws_configured, payment_orchestrator_configured, payment_validator_configured, sanction_check_configured, json_data is not None])):
-    with st.spinner("Processing payment..."):
-        result = process_payment_with_agents(json_data)
-
-# Display execution steps
-st.subheader("Execution Steps")
-
-with st.container():
-    # Display execution steps
-    if 'orchestrator_steps' in st.session_state:
-        current_step = st.session_state.orchestrator_steps.get('current_step', 0)
-        steps = st.session_state.orchestrator_steps.get('steps', DEFAULT_STEPS)
+with left_col:
+    # Payment Request Card
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-header">Payment Request</div>', unsafe_allow_html=True)
+    
+    # JSON editor with file upload option
+    json_data = display_json_editor(get_default_json_template())
+    
+    # Process payment button with improved styling
+    st.markdown('<div class="process-button">', unsafe_allow_html=True)
+    if st.button("Process Payment", type="primary", disabled=not all([aws_configured, payment_orchestrator_configured, payment_validator_configured, sanction_check_configured, json_data is not None])):
+        with st.spinner("Processing payment..."):
+            result = process_payment_with_agents(json_data)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Recent payment history in a card
+    if st.session_state.payment_history:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">Recent Processing History</div>', unsafe_allow_html=True)
         
-        for i, step in enumerate(steps):
-            if i < current_step:
-                # Completed step
-                st.markdown(f'<div class="execution-step completed">✓ {step}</div>', unsafe_allow_html=True)
-            elif i == current_step:
-                # Active step
-                st.markdown(f'<div class="execution-step active">▶ {step}</div>', unsafe_allow_html=True)
-            else:
-                # Pending step
-                st.markdown(f'<div class="execution-step pending">○ {step}</div>', unsafe_allow_html=True)
-
-# Display agent status
-st.subheader("Agent Status")
-
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if 'agent_statuses' in st.session_state:
-            status = st.session_state.agent_statuses['payment_orchestrator']['status']
-            active = st.session_state.agent_statuses['payment_orchestrator']['active']
-            status_class = f"agent-status {status}"
+        agent_options = get_agent_options()
+        for i, history_item in enumerate(reversed(st.session_state.payment_history[:3])):
+            agent_type = history_item.get('agent_type', 'unknown')
+            agent_display_name = agent_options.get(agent_type, agent_type.replace('_', ' ').title())
             
-            st.markdown(f'<div class="{status_class}">', unsafe_allow_html=True)
-            st.write("**Payment Orchestrator**")
-            st.write(f"Status: {status.title()}")
-            if active:
-                st.write("🔄 Active")
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        if 'agent_statuses' in st.session_state:
-            status = st.session_state.agent_statuses['payment_validator']['status']
-            active = st.session_state.agent_statuses['payment_validator']['active']
-            status_class = f"agent-status {status}"
-            
-            st.markdown(f'<div class="{status_class}">', unsafe_allow_html=True)
-            st.write("**Payment Validator**")
-            st.write(f"Status: {status.title()}")
-            if active:
-                st.write("🔄 Active")
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col3:
-        if 'agent_statuses' in st.session_state:
-            status = st.session_state.agent_statuses['sanction_check']['status']
-            active = st.session_state.agent_statuses['sanction_check']['active']
-            status_class = f"agent-status {status}"
-            
-            st.markdown(f'<div class="{status_class}">', unsafe_allow_html=True)
-            st.write("**Sanction Check**")
-            st.write(f"Status: {status.title()}")
-            if active:
-                st.write("🔄 Active")
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.expander(f"Request {i+1} - {history_item['timestamp']} - {agent_display_name} - {history_item['status']}"):
+                st.write("**Request:**")
+                st.json(history_item['payload'])
+                st.write("**Response:**")
+                st.write(history_item['response'])
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# Display work log
-if st.session_state.step_logs:
-    st.subheader("Work Log")
+with right_col:
+    # Agent Status Card
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-header">Agent Status</div>', unsafe_allow_html=True)
     
-    with st.expander("View detailed work log", expanded=True):
+    if 'agent_statuses' in st.session_state:
+        # Payment Orchestrator
+        status = st.session_state.agent_statuses['payment_orchestrator']['status']
+        active = st.session_state.agent_statuses['payment_orchestrator']['active']
+        
+        st.markdown(f'<div class="agent-status {status}">', unsafe_allow_html=True)
+        st.markdown(f'<span class="status-indicator {status}"></span> <b>Payment Orchestrator:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Payment Validator
+        status = st.session_state.agent_statuses['payment_validator']['status']
+        active = st.session_state.agent_statuses['payment_validator']['active']
+        
+        st.markdown(f'<div class="agent-status {status}">', unsafe_allow_html=True)
+        st.markdown(f'<span class="status-indicator {status}"></span> <b>Payment Validator:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Sanction Check
+        status = st.session_state.agent_statuses['sanction_check']['status']
+        active = st.session_state.agent_statuses['sanction_check']['active']
+        
+        st.markdown(f'<div class="agent-status {status}">', unsafe_allow_html=True)
+        st.markdown(f'<span class="status-indicator {status}"></span> <b>Sanction Check:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Work Log Card
+    if st.session_state.step_logs:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">Work Log</div>', unsafe_allow_html=True)
+        
         st.markdown('<div class="worklog">', unsafe_allow_html=True)
         
         if st.session_state.step_logs:
@@ -570,47 +581,7 @@ if st.session_state.step_logs:
                 """, unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
-
-# Display results if available
-if 'multi_agent_result' in st.session_state:
-    result = st.session_state.multi_agent_result
-    
-    st.subheader("Processing Results")
-    
-    # Display only the Payment Orchestrator results
-    orchestrator_status = result['orchestrator']['status']
-    status_class = f"agent-status {orchestrator_status}"
-    
-    st.markdown(f'<div class="{status_class}">', unsafe_allow_html=True)
-    st.write(f"**Status:** {orchestrator_status.title()}")
-    
-    if orchestrator_status == 'success':
-        st.write("**Response:**")
-        st.write(result['orchestrator']['response'].get('response', 'No response'))
-        
-        with st.expander("Session Details"):
-            st.write(f"Session ID: {result['orchestrator']['response'].get('sessionId', 'Unknown')}")
-            if 'trace' in result['orchestrator']['response']:
-                st.json(result['orchestrator']['response']['trace'])
-    elif orchestrator_status == 'error':
-        st.error(result['orchestrator']['error'])
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Recent payment history
-if st.session_state.payment_history:
-    st.subheader("Recent Processing History")
-    
-    agent_options = get_agent_options()
-    for i, history_item in enumerate(reversed(st.session_state.payment_history[:3])):
-        agent_type = history_item.get('agent_type', 'unknown')
-        agent_display_name = agent_options.get(agent_type, agent_type.replace('_', ' ').title())
-        
-        with st.expander(f"Request {i+1} - {history_item['timestamp']} - {agent_display_name} - {history_item['status']}"):
-            st.write("**Request:**")
-            st.json(history_item['payload'])
-            st.write("**Response:**")
-            st.write(history_item['response'])
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # Add information about configuration
 display_configuration_info()
