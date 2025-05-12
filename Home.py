@@ -139,12 +139,35 @@ with col4:
     if task_btn:
         st.switch_page("pages/4_Task_Execution_Status.py")
 
+# Third row
+col5, col6 = st.columns(2)
+
+with col5:
+    # Light teal button - direct styling
+    st.markdown("""
+    <style>
+    div[data-testid="stHorizontalBlock"]:nth-of-type(3) > div:nth-child(1) button {
+        background-color: #80CBC4;
+        border-color: #80CBC4;
+        height: 100px;
+        font-size: 24px;
+        font-weight: bold;
+        color: black !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    spa_btn = st.button("📄  SPA Processing", use_container_width=True, key="spa_btn")
+    st.markdown('<div style="text-align:center; margin-bottom:15px;">Process structured product agreements (SPA) stored in S3 buckets using AWS Bedrock agents.</div>', unsafe_allow_html=True)
+    if spa_btn:
+        st.switch_page("pages/5_SPA_Processing.py")
+
 # Add information about the application in a compact format
 st.markdown("<h3 style='margin-top:0.5rem; margin-bottom:0.5rem;'>About This Application</h3>", unsafe_allow_html=True)
 st.markdown("""
-<p style='margin-bottom:0.5rem;'>This application demonstrates the use of AWS Bedrock agents for payment processing and validation.</p>
+<p style='margin-bottom:0.5rem;'>This application demonstrates the use of AWS Bedrock agents for payment processing, document processing, and validation.</p>
 <ul style='margin-top:0; padding-left:20px;'>
 <li>Process payments using different agent types</li>
+<li>Process structured product agreements (SPA) from S3 buckets</li>
 <li>Monitor agent status and health</li>
 <li>View execution history and logs</li>
 <li>Track task execution progress in real-time</li>
