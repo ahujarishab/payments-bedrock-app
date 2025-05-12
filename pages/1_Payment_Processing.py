@@ -509,33 +509,50 @@ with left_col:
                 st.write(history_item['response'])
 
 with right_col:
-    # Agent Status section - without card wrapper
-    st.subheader("Agent Status")
+    # Payment Orchestrator Response section
+    st.subheader("Payment Orchestrator Response")
     
-    if 'agent_statuses' in st.session_state:
-        # Payment Orchestrator
+    if 'agent_statuses' in st.session_state and st.session_state.agent_statuses['payment_orchestrator']['status'] != 'pending':
         status = st.session_state.agent_statuses['payment_orchestrator']['status']
-        active = st.session_state.agent_statuses['payment_orchestrator']['active']
         
-        st.markdown(f'<div class="agent-status {status}">', unsafe_allow_html=True)
-        st.markdown(f'<span class="status-indicator {status}"></span> <b>Payment Orchestrator:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Payment Validator
-        status = st.session_state.agent_statuses['payment_validator']['status']
-        active = st.session_state.agent_statuses['payment_validator']['active']
-        
-        st.markdown(f'<div class="agent-status {status}">', unsafe_allow_html=True)
-        st.markdown(f'<span class="status-indicator {status}"></span> <b>Payment Validator:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Sanction Check
-        status = st.session_state.agent_statuses['sanction_check']['status']
-        active = st.session_state.agent_statuses['sanction_check']['active']
-        
-        st.markdown(f'<div class="agent-status {status}">', unsafe_allow_html=True)
-        st.markdown(f'<span class="status-indicator {status}"></span> <b>Sanction Check:</b> {status.title()} {" 🔄" if active else ""}', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        if status == 'success':
+            response = st.session_state.agent_statuses['payment_orchestrator']['response']
+            if response and 'response' in response:
+                st.success("✅ Payment processed successfully")
+                
+                # Clean up the response to remove raw process_payment function calls
+                response_text = response.get('response', 'No response data')
+                if "process_payment(" in response_text:
+                    # Extract just the relevant part of the response
+                    try:
+                        # Try to find a more meaningful part of the response
+                        if "Payment approved" in response_text:
+                            st.write("Payment approved and processed successfully.")
+                        elif "Transaction completed" in response_text:
+                            st.write("Transaction completed successfully.")
+                        else:
+                            # Show a generic success message instead of the raw function call
+                            st.write("Payment request was processed successfully by the payment orchestrator.")
+                    except:
+                        # Fallback to a generic message
+                        st.write("Payment request was processed successfully.")
+                else:
+                    # If no function call is found, display the original response
+                    st.write(response_text)
+                
+                # Show session ID in an expander
+                with st.expander("Session Details"):
+                    st.write(f"Session ID: {response.get('sessionId', 'Unknown')}")
+                    # Don't display the trace JSON directly
+            else:
+                st.info("Payment processed but no response data available")
+        elif status == 'error':
+            error = st.session_state.agent_statuses['payment_orchestrator']['error']
+            st.error(f"❌ Error: {error}")
+        elif status == 'running':
+            st.info("⏳ Payment processing in progress...")
+    else:
+        st.info("Submit a payment request to see the response here")
     
     # Work Log section - without card wrapper
     if st.session_state.step_logs:
