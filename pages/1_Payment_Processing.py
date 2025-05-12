@@ -21,6 +21,9 @@ def add_step_log(step_index, message):
     
     timestamp = datetime.now().strftime("%H:%M:%S")
     st.session_state.step_logs[step_index].append(f"[{timestamp}] {message}")
+    
+    # Don't force rerun as it causes the process to get stuck
+    # The UI will update naturally between agent calls
 
 # Function to process payment with multi-agent collaboration
 def process_payment_with_agents(json_data):
@@ -28,6 +31,10 @@ def process_payment_with_agents(json_data):
     st.session_state.is_processing = True
     st.session_state.processing_started = True
     st.session_state.processing_complete = False
+    
+    # Add a small delay between steps to allow UI updates
+    def delay_between_steps():
+        time.sleep(0.1)
     
     # Reset agent statuses
     st.session_state.agent_statuses = {
@@ -58,15 +65,22 @@ def process_payment_with_agents(json_data):
     st.session_state.orchestrator_steps['current_step'] = 0
     st.session_state.agent_statuses['payment_orchestrator']['active'] = True
     add_step_log(0, "Payment request received")
+    delay_between_steps()
     add_step_log(0, "Parsing JSON payload")
+    delay_between_steps()
     add_step_log(0, "Extracting payment details")
+    delay_between_steps()
     
     # Step 1: Validating request format
     st.session_state.orchestrator_steps['current_step'] = 1
     add_step_log(1, "Validating request format")
+    delay_between_steps()
     add_step_log(1, "Checking required fields")
+    delay_between_steps()
     add_step_log(1, "Validating card details format")
+    delay_between_steps()
     add_step_log(1, "Validating customer information")
+    delay_between_steps()
     
     # Step 2: Start Payment Validator
     st.session_state.orchestrator_steps['current_step'] = 2
@@ -74,12 +88,20 @@ def process_payment_with_agents(json_data):
     st.session_state.agent_statuses['payment_validator']['active'] = True
     st.session_state.agent_statuses['payment_orchestrator']['active'] = False
     add_step_log(2, "Delegating card validation to Payment Validator")
+    delay_between_steps()
     add_step_log(2, "Preparing card details for validation")
+    delay_between_steps()
     add_step_log(2, "Invoking Payment Validator agent")
+    delay_between_steps()
     
     # Call the Payment Validator agent
     try:
         add_step_log(2, "Payment Validator processing card details")
+        delay_between_steps()
+        
+        # Update UI before making the API call
+        st.session_state.temp_progress = "Calling Payment Validator API..."
+        
         validator_result = invoke_agent("payment_validator", validator_payload, aws_creds['aws_region'])
         
         if 'error' in validator_result:
@@ -90,10 +112,12 @@ def process_payment_with_agents(json_data):
             st.session_state.agent_statuses['payment_validator']['status'] = 'success'
             st.session_state.agent_statuses['payment_validator']['response'] = validator_result
             add_step_log(2, "Card validation completed successfully")
+            delay_between_steps()
     except Exception as e:
         st.session_state.agent_statuses['payment_validator']['status'] = 'error'
         st.session_state.agent_statuses['payment_validator']['error'] = str(e)
         add_step_log(2, f"Exception: {str(e)}")
+        delay_between_steps()
     
     # Step 3: Start Sanction Check
     st.session_state.orchestrator_steps['current_step'] = 3
@@ -101,12 +125,20 @@ def process_payment_with_agents(json_data):
     st.session_state.agent_statuses['sanction_check']['active'] = True
     st.session_state.agent_statuses['payment_validator']['active'] = False
     add_step_log(3, "Delegating customer check to Sanction Check")
+    delay_between_steps()
     add_step_log(3, "Preparing customer details for sanction check")
+    delay_between_steps()
     add_step_log(3, "Invoking Sanction Check agent")
+    delay_between_steps()
     
     # Call the Sanction Check agent
     try:
         add_step_log(3, "Sanction Check processing customer details")
+        delay_between_steps()
+        
+        # Update UI before making the API call
+        st.session_state.temp_progress = "Calling Sanction Check API..."
+        
         sanction_result = invoke_agent("sanction_check", sanction_check_payload, aws_creds['aws_region'])
         
         if 'error' in sanction_result:
@@ -490,8 +522,14 @@ with left_col:
     
     # Process payment button with improved styling
     if st.button("Process Payment", type="primary", disabled=not all([aws_configured, payment_orchestrator_configured, payment_validator_configured, sanction_check_configured, json_data is not None])):
+        # Clear previous logs before starting
+        st.session_state.step_logs = {}
+        
         with st.spinner("Processing payment..."):
             result = process_payment_with_agents(json_data)
+            
+        # Force a rerun after processing is complete to update the UI
+        st.rerun()
     
     # Recent payment history section - without card wrapper
     if st.session_state.payment_history:
@@ -554,38 +592,59 @@ with right_col:
     else:
         st.info("Submit a payment request to see the response here")
     
-    # Work Log section - without card wrapper
-    if st.session_state.step_logs:
-        st.subheader("Work Log")
-        
-        st.markdown('<div class="worklog">', unsafe_allow_html=True)
-        
-        if st.session_state.step_logs:
-            all_logs = []
-            for step_index, logs in st.session_state.step_logs.items():
-                # Try to convert step_index to int if it's a string and looks like a number
-                try:
-                    idx = int(step_index) if isinstance(step_index, str) else step_index
-                    step_name = DEFAULT_STEPS[idx] if idx < len(DEFAULT_STEPS) else f"Step {step_index}"
-                except (ValueError, TypeError):
-                    # If conversion fails, use a default step name
-                    step_name = f"Step: {step_index}"
-                for log in logs:
-                    all_logs.append((step_index, step_name, log))
-            
-            # Sort logs by step index
-            all_logs.sort(key=lambda x: int(x[0]) if isinstance(x[0], str) and x[0].isdigit() else (x[0] if isinstance(x[0], int) else 999))
-            
-            # Display logs
-            for step_index, step_name, log in all_logs:
+    # Work Log section - always display, even when empty
+    st.subheader("Work Log")
+    
+    st.markdown('<div class="worklog">', unsafe_allow_html=True)
+    
+    # Show current agent status at the top of the worklog
+    if 'agent_statuses' in st.session_state:
+        current_active_agent = None
+        for agent_name, status_info in st.session_state.agent_statuses.items():
+            if status_info['active']:
+                current_active_agent = agent_name
+                agent_display_name = agent_name.replace('_', ' ').title()
                 st.markdown(f"""
-                <div class="worklog-entry">
-                    <div class="timestamp">{step_name}</div>
-                    <p class="message">{log}</p>
+                <div class="worklog-entry" style="background-color: #fff3cd; border-left: 4px solid #ffc107;">
+                    <div class="timestamp">Currently Active</div>
+                    <p class="message">🔄 {agent_display_name} is currently processing...</p>
                 </div>
                 """, unsafe_allow_html=True)
+                break
+    
+    if st.session_state.step_logs:
+        all_logs = []
+        for step_index, logs in st.session_state.step_logs.items():
+            # Try to convert step_index to int if it's a string and looks like a number
+            try:
+                idx = int(step_index) if isinstance(step_index, str) else step_index
+                step_name = DEFAULT_STEPS[idx] if idx < len(DEFAULT_STEPS) else f"Step {step_index}"
+            except (ValueError, TypeError):
+                # If conversion fails, use a default step name
+                step_name = f"Step: {step_index}"
+            for log in logs:
+                all_logs.append((step_index, step_name, log))
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Sort logs by step index
+        all_logs.sort(key=lambda x: int(x[0]) if isinstance(x[0], str) and x[0].isdigit() else (x[0] if isinstance(x[0], int) else 999))
+        
+        # Display logs
+        for step_index, step_name, log in all_logs:
+            st.markdown(f"""
+            <div class="worklog-entry">
+                <div class="timestamp">{step_name}</div>
+                <p class="message">{log}</p>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        # Show a placeholder message when no logs are available
+        st.markdown("""
+        <div class="worklog-entry" style="color: #6c757d;">
+            <p class="message">No processing activity yet. Submit a payment request to see the progress here.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Add information about configuration
 display_configuration_info()
